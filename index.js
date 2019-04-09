@@ -1,10 +1,11 @@
 /* eslint-disable no-plusplus */
 import { ApolloServer, gql, ApolloError } from 'apollo-server';
+import uuid from 'uuid/v4';
 
 
 const comments = [];
 const users = [];
-const posts = [];
+let posts = [];
 
 const typeDefs = gql`
 
@@ -43,9 +44,10 @@ type Query {
 }
 
 type Mutation {
-  createUser(data: createUserInput!): User
+  createUser(data: createUserInput!): User!
   createPost(data: createPostInput!): Post!
-  createComment(data: createCommentInput!): Comment
+  createComment(data: createCommentInput!): Comment!
+  deleteUser(id: ID!): User!
 }
 
 input createUserInput {
@@ -71,14 +73,17 @@ input createCommentInput {
 const resolvers = {
   Mutation: {
     createUser: (parent, args, ctx, info) => {
+      // check if email already exists and throw an error
       const checkEmailDuplicate = users.some(user => args.data.email === user.email);
       if (checkEmailDuplicate) {
         throw new ApolloError('Email already exists');
       } else {
+        // create user
         const newUser = {
-          id: `${users.length + 1}`,
+          id: uuid(),
           ...args.data,
         };
+        // add new user to user list
         users.push(newUser);
         return newUser;
       }
@@ -89,7 +94,7 @@ const resolvers = {
         throw new ApolloError("user doesn't exist");
       }
       const newPost = {
-        id: `${posts.length + 1}`,
+        id: uuid(),
         ...args.data,
       };
       posts.push(newPost);
@@ -102,11 +107,26 @@ const resolvers = {
         throw new ApolloError("user or post doesn't exist");
       }
       const newComment = {
-        id: `${comments.length + 1}`,
+        id: uuid(),
         ...args.data,
       };
       comments.push(newComment);
       return newComment;
+    },
+    deleteUser: (parent, args, ctx, info) => {
+      // check if user exists in the list
+      const searchUser = users.findIndex(user => user.id === args.id);
+      // throw error if user doesn't exist
+      if (searchUser === -1) {
+        throw new ApolloError("user doesn't exist");
+      }
+      const deletedUser = users[searchUser];
+      // remove user from list
+      users.splice(searchUser, 1);
+      // check if user also had related posts
+      const userPosts = posts.filter(post => post.author !== args.id);
+      posts = userPosts;
+      return deletedUser;
     },
   },
   Query: {
@@ -123,7 +143,6 @@ const resolvers = {
           user.name.toLowerCase().includes(args.queried)
         ));
       }
-
       return users;
     },
     post: (parent, args, ctx, info) => {
@@ -137,14 +156,12 @@ const resolvers = {
       if (args.queried) {
         return posts.filter(post => post.title.toLowerCase().includes(args.queried) || post.body.toLowerCase().includes(args.queried));
       }
-
       return posts;
     },
     comments: (parent, args, ctx, info) => {
       if (args.queried) {
         return comments.filter(comment => comment.text.includes(args.queried));
       }
-
       return comments;
     },
   },
