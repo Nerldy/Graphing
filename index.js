@@ -3,7 +3,7 @@ import { ApolloServer, gql, ApolloError } from 'apollo-server';
 import uuid from 'uuid/v4';
 
 
-const comments = [];
+let comments = [];
 const users = [];
 let posts = [];
 
@@ -126,6 +126,9 @@ const resolvers = {
       // check if user also had related posts
       const userPosts = posts.filter(post => post.author !== args.id);
       posts = userPosts;
+      // check if user has comments
+      const userComments = comments.filter(comment => comment.author !== args.id);
+      comments = userComments;
       return deletedUser;
     },
   },
