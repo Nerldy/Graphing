@@ -48,6 +48,7 @@ type Mutation {
   createPost(data: createPostInput!): Post!
   createComment(data: createCommentInput!): Comment!
   deleteUser(id: ID!): User!
+  deletePost(id: ID!): Post!
 }
 
 input createUserInput {
@@ -101,7 +102,9 @@ const resolvers = {
       return newPost;
     },
     createComment: (parent, args, ctx, info) => {
+      // check if user exists
       const checkUserExists = users.some(user => user.id === args.data.author);
+      // check if posts exists
       const checkPostExists = posts.some(post => post.id === args.data.post);
       if (!checkUserExists && !checkPostExists) {
         throw new ApolloError("user or post doesn't exist");
@@ -120,7 +123,7 @@ const resolvers = {
       if (searchUser === -1) {
         throw new ApolloError("user doesn't exist");
       }
-      const deletedUser = users[searchUser];
+      const deletedUser = users.splice(searchUser, 1);
       // remove user from list
       users.splice(searchUser, 1);
       // check if user also had related posts
@@ -129,7 +132,18 @@ const resolvers = {
       // check if user has comments
       const userComments = comments.filter(comment => comment.author !== args.id);
       comments = userComments;
-      return deletedUser;
+      return deletedUser[0];
+    },
+    deletePost: (parent, args, ctx, info) => {
+      // search post in the posts
+      const searchPost = posts.findIndex(post => post.id === args.id);
+      if (searchPost === -1) {
+        throw new ApolloError("post doesn't exist");
+      }
+      const deletedPost = posts.splice(searchPost, 1);
+      const postComment = comments.filter(comment => comment.post !== args.id);
+      comments = postComment;
+      return deletedPost[0];
     },
   },
   Query: {
