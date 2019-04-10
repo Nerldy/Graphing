@@ -49,6 +49,7 @@ type Mutation {
   createComment(data: createCommentInput!): Comment!
   deleteUser(id: ID!): User!
   deletePost(id: ID!): Post!
+  deleteComment(id: ID!): Comment!
 }
 
 input createUserInput {
@@ -144,6 +145,14 @@ const resolvers = {
       const postComment = comments.filter(comment => comment.post !== args.id);
       comments = postComment;
       return deletedPost[0];
+    },
+    deleteComment: (parent, args, ctx, info) => {
+      const findComment = comments.findIndex(comment => comment.id === args.id);
+      if (findComment === -1) {
+        throw new ApolloError("comment doesn't exist");
+      }
+      const deleteComment = comments.splice(findComment, 1);
+      return deleteComment[0];
     },
   },
   Query: {
